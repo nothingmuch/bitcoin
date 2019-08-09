@@ -76,6 +76,8 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         # reconnect the nodes
         connect_nodes(node1, 1)
 
+        time.sleep(11)
+
         # check that node2 has gotten the txns since
         # they were rebroadcast
         assert_equal(len(node1.getrawmempool()), 6)
