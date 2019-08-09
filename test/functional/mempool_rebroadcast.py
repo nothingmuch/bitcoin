@@ -45,9 +45,9 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         node1 = self.nodes[0]
         node2 = self.nodes[1]
 
-        # start_time = int(time.time())
-        # node1.setmocktime(start_time)
-        # node2.setmocktime(start_time)
+        start_time = int(time.time())
+        node1.setmocktime(start_time)
+        node2.setmocktime(start_time)
 
         # generate mempool transactions that both nodes know about
         for i in range(3):
@@ -69,15 +69,12 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         assert_equal(len(node1.getrawmempool()), 6)
         assert_equal(len(node2.getrawmempool()), 3)
 
-        # delta_time = 5 * 60 # seconds
-        # node1.setmocktime(start_time + delta_time)
-        # node2.setmocktime(start_time + delta_time)
+        delta_time = 11 * 60 # seconds
+        node1.setmocktime(start_time + delta_time)
+        node2.setmocktime(start_time + delta_time)
 
         # reconnect the nodes
         connect_nodes(node1, 1)
-
-        # NOTE: why is this only 5??? weird but ok.
-        time.sleep(5)
 
         # check that node2 has gotten the txns since
         # they were rebroadcast
