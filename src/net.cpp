@@ -2705,6 +2705,12 @@ int64_t PoissonNextSend(int64_t now, int average_interval_seconds)
     return now + (int64_t)(log1p(GetRand(1ULL << 48) * -0.0000000000000035527136788 /* -1/2^48 */) * average_interval_seconds * -1000000.0 + 0.5);
 }
 
+std::chrono::seconds AnotherPoissonNextSend(std::chrono::seconds now, int average_interval_seconds)
+{
+    return now + std::chrono::seconds(10);
+    //return now + std::chrono::seconds((log1p(GetRand(1ULL << 48) * -0.0000000000000035527136788) [> -1/2^48 <]) * average_interval_seconds * -1000000.0 + 0.5);
+}
+
 CSipHasher CConnman::GetDeterministicRandomizer(uint64_t id) const
 {
     return CSipHasher(nSeed0, nSeed1).Write(id);

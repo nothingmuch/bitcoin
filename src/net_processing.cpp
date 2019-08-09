@@ -3802,8 +3802,10 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
 
             // ABCD
             // Check for rebroadcasts
-            if (pto->m_next_rebroadcast < nNow) {
-                pto->m_next_rebroadcast = PoissonNextSend(nNow, TX_REBROADCAST_INTERVAL);
+            const auto current_time = GetTime<std::chrono::seconds>();
+
+            if (pto->m_next_rebroadcast < current_time) {
+                pto->m_next_rebroadcast = AnotherPoissonNextSend(current_time, TX_REBROADCAST_INTERVAL);
 
                 std::set<uint256> setRebroadcastTxs;
                 mempool.GetRebroadcastTransactions(setRebroadcastTxs);

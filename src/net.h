@@ -716,7 +716,7 @@ public:
     bool fSendMempool GUARDED_BY(cs_inventory){false};
 
     // Used for scheduling rebroadcasts
-    int64_t m_next_rebroadcast{0};
+    std::chrono::seconds m_next_rebroadcast{0};
 
     // Last time a "MEMPOOL" request was serviced.
     std::atomic<int64_t> timeLastMempoolReq{0};
@@ -880,5 +880,7 @@ public:
 
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t PoissonNextSend(int64_t now, int average_interval_seconds);
+
+std::chrono::seconds AnotherPoissonNextSend(std::chrono::seconds now, int average_interval_seconds);
 
 #endif // BITCOIN_NET_H

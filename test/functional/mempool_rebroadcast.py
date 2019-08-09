@@ -8,10 +8,20 @@ la de da de rebroadcasts are so much fun!!
 """
 
 from decimal import Decimal
-from test_framework.messages import msg_mempool, msg_getdata, CInv
+from test_framework.messages import (
+        msg_mempool,
+        msg_getdata,
+        CInv
+)
 from test_framework.mininode import P2PInterface
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, disconnect_nodes, connect_nodes, random_transaction
+from test_framework.util import (
+        assert_equal,
+        wait_until,
+        disconnect_nodes,
+        connect_nodes,
+        random_transaction
+)
 import pdb
 import time
 
@@ -25,35 +35,30 @@ import time
 class MempoolRebroadcastTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
-        self.setup_clean_chain = True
 
     def run_test(self):
-        node1 = self.nodes[0]
-        node2 = self.nodes[1]
-
-        # Add a p2p connection
-        node1.add_p2p_connection(P2PInterface())
-
-        # fund both nodes &
-        # assert balances are as expected
-        node1.generate(101)
-
-
-        self.sync_all()
-        assert_equal(node1.getbalance(), 50)
-
-        self.log.info("Testing rebroadcast works")
         self.test_simple_rebroadcast()
 
     def test_simple_rebroadcast(self):
+        self.log.info("Testing rebroadcast works")
+
         node1 = self.nodes[0]
         node2 = self.nodes[1]
+
+        # start_time = int(time.time())
+        # node1.setmocktime(start_time)
+        # node2.setmocktime(start_time)
 
         # generate mempool transactions that both nodes know about
         for i in range(3):
             node1.sendtoaddress(node2.getnewaddress(), 4)
 
         self.sync_all()
+
+        # check they both know about it
+        assert_equal(len(node1.getrawmempool()), 3)
+        assert_equal(len(node2.getrawmempool()), 3)
+
         disconnect_nodes(node1, 1)
 
         # generate mempool transactions that only node1 knows about
@@ -64,13 +69,18 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         assert_equal(len(node1.getrawmempool()), 6)
         assert_equal(len(node2.getrawmempool()), 3)
 
+        # delta_time = 5 * 60 # seconds
+        # node1.setmocktime(start_time + delta_time)
+        # node2.setmocktime(start_time + delta_time)
+
         # reconnect the nodes
         connect_nodes(node1, 1)
 
+        # NOTE: why is this only 5??? weird but ok.
         time.sleep(5)
 
         # check that node2 has gotten the txns since
-        # they were rebroadcasted
+        # they were rebroadcast
         assert_equal(len(node1.getrawmempool()), 6)
         assert_equal(len(node2.getrawmempool()), 6)
 
