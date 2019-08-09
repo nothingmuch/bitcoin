@@ -110,6 +110,9 @@ static constexpr unsigned int INVENTORY_BROADCAST_MAX = 7 * INVENTORY_BROADCAST_
 static constexpr unsigned int AVG_FEEFILTER_BROADCAST_INTERVAL = 10 * 60;
 /** Maximum feefilter broadcast delay after significant change. */
 static constexpr unsigned int MAX_FEEFILTER_CHANGE_DELAY = 5 * 60;
+/** Average delay between rebroadcasts in seconds. */
+static const unsigned int TX_REBROADCAST_INTERVAL = 60 * 60;
+
 
 // Internal stuff
 namespace {
@@ -3795,6 +3798,17 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                     // Use half the delay for outbound peers, as there is less privacy concern for them.
                     pto->nNextInvSend = PoissonNextSend(nNow, INVENTORY_BROADCAST_INTERVAL >> 1);
                 }
+            }
+
+            // ABCD
+            // Check for rebroadcasts
+            if (pto->m_next_rebroadcast < nNow) {
+                pto->m_next_rebroadcast = PoissonNextSend(nNow, TX_REBROADCAST_INTERVAL);
+
+                std::set<uint256> setRebroadcastTxs;
+                mempool.GetRebroadcastTransactions(setRebroadcastTxs);
+
+                pto->setInventoryTxToSend.insert(setRebroadcastTxs.begin(), setRebroadcastTxs.end());
             }
 
             // Time to send but the peer has requested we not relay transactions.

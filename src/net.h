@@ -715,6 +715,9 @@ public:
     // Used for BIP35 mempool sending
     bool fSendMempool GUARDED_BY(cs_inventory){false};
 
+    // Used for scheduling rebroadcasts
+    int64_t m_next_rebroadcast{0};
+
     // Last time a "MEMPOOL" request was serviced.
     std::atomic<int64_t> timeLastMempoolReq{0};
 

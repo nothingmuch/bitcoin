@@ -16,6 +16,8 @@
 #include <util/system.h>
 #include <util/moneystr.h>
 #include <util/time.h>
+#include <miner.h>
+#include <chainparams.h>
 
 CTxMemPoolEntry::CTxMemPoolEntry(const CTransactionRef& _tx, const CAmount& _nFee,
                                  int64_t _nTime, unsigned int _entryHeight,
@@ -95,6 +97,44 @@ void CTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendan
         }
     }
     mapTx.modify(updateIt, update_descendant_state(modifySize, modifyFee, modifyCount));
+}
+
+// ABCD
+// cs_mempool lock acquire?
+void CTxMemPool::GetRebroadcastTransactions(std::set<uint256> &setRebroadcastTxs)
+{
+    if (::ChainstateActive().IsInitialBlockDownload()){
+        return;
+    }
+
+    BlockAssembler::Options options;
+    options.nBlockMaxWeight = MAX_REBROADCAST_WEIGHT;
+
+    CScript scriptDummy = CScript() << OP_TRUE;
+
+    // use CreateNewBlock to get set of transaction candidates
+    std::unique_ptr<CBlockTemplate> pblocktemplate = BlockAssembler(Params(), options).CreateNewBlock(scriptDummy);
+
+    // pblocktemplate->block.vtx is set of rebroadcast candidates
+    // tx is CTransaction type
+    // *it gives CTxMemPoolEntry type
+    for (const auto &tx : pblocktemplate->block.vtx) {
+        txiter it = mapTx.find(tx->GetHash());
+        // todo: deal with if txn doesn't exist
+
+        // if too recent, move on
+        // TODO: extract magic number & oh make this work
+        // - 30*60
+        //if (*it.GetTime() > GetSystemTimeInSeconds) {
+            //continue;
+        //}
+
+        // otherwise, add to rebroadcast set
+        setRebroadcastTxs.insert(tx->GetHash());
+    }
+
+
+    // log stuff??
 }
 
 // vHashesToUpdate is the set of transaction hashes from a disconnected block
