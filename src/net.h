@@ -715,6 +715,9 @@ public:
     // Used for BIP35 mempool sending
     bool fSendMempool GUARDED_BY(cs_inventory){false};
 
+    // Used for scheduling rebroadcasts
+    std::chrono::seconds m_next_rebroadcast{0};
+
     // Last time a "MEMPOOL" request was serviced.
     std::atomic<int64_t> timeLastMempoolReq{0};
 
@@ -871,11 +874,9 @@ public:
     void MaybeSetAddrName(const std::string& addrNameIn);
 };
 
-
-
-
-
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t PoissonNextSend(int64_t now, int average_interval_seconds);
+
+std::chrono::seconds PoissonNextSend(std::chrono::seconds now, int average_interval_seconds);
 
 #endif // BITCOIN_NET_H

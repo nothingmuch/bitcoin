@@ -3797,6 +3797,26 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                 }
             }
 
+            // ABCD
+            // Check for rebroadcasts
+            const auto current_time = GetTime<std::chrono::seconds>();
+
+            if (pto->m_next_rebroadcast < current_time) {
+                LogPrint(BCLog::NET, "2! \n");
+                bool fFirst = (pto->m_next_rebroadcast == (std::chrono::seconds) 0 );
+                PoissonNextSend(nNow, TX_REBROADCAST_INTERVAL);
+                pto->m_next_rebroadcast = PoissonNextSend(current_time, TX_REBROADCAST_INTERVAL);
+
+                if (!fFirst) {
+                  LogPrint(BCLog::NET, "3! \n");
+                  std::set<uint256> setRebroadcastTxs;
+                  mempool.GetRebroadcastTransactions(setRebroadcastTxs);
+
+                  LogPrint(BCLog::NET, "insert tx to send \n");
+                  pto->setInventoryTxToSend.insert(setRebroadcastTxs.begin(), setRebroadcastTxs.end());
+                }
+            }
+
             // Time to send but the peer has requested we not relay transactions.
             if (fSendTrickle) {
                 LOCK(pto->cs_filter);

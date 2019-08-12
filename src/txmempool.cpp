@@ -97,6 +97,37 @@ void CTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendan
     mapTx.modify(updateIt, update_descendant_state(modifySize, modifyFee, modifyCount));
 }
 
+// ABCD
+void CTxMemPool::GetRebroadcastTransactions(std::set<uint256> &setRebroadcastTxs)
+{
+    LogPrint(BCLog::NET, "4! \n");
+
+    // Don't rebroadcast txns during importing, reindex, or IBD to ensure we don't
+    // accidentally spam our peers with old transactions.
+    if (::ChainstateActive().IsInitialBlockDownload() || ::fImporting || ::fReindex) return;
+
+    BlockAssembler::Options options;
+    options.nBlockMaxWeight = MAX_REBROADCAST_WEIGHT;
+
+    CScript scriptDummy = CScript() << OP_TRUE;
+
+    // use CreateNewBlock to get set of transaction candidates
+    std::unique_ptr<CBlockTemplate> pblocktemplate = BlockAssembler(Params(), options).CreateNewBlock(scriptDummy);
+
+    // pblocktemplate->block.vtx is set of rebroadcast candidates
+    // tx is CTransaction type
+    // *it gives CTxMemPoolEntry type
+    for (const auto &tx : pblocktemplate->block.vtx) {
+        txiter it = mapTx.find(tx->GetHash());
+        // todo: deal with if txn doesn't exist
+
+        // otherwise, add to rebroadcast set
+        setRebroadcastTxs.insert(tx->GetHash());
+    }
+
+    // log stuff??
+}
+
 // vHashesToUpdate is the set of transaction hashes from a disconnected block
 // which has been re-added to the mempool.
 // for each entry, look for descendants that are outside vHashesToUpdate, and
