@@ -45,10 +45,6 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         node1 = self.nodes[0]
         node2 = self.nodes[1]
 
-        start_time = int(time.time())
-        node1.setmocktime(start_time)
-        node2.setmocktime(start_time)
-
         # generate mempool transactions that both nodes know about
         for i in range(3):
             node1.sendtoaddress(node2.getnewaddress(), 4)
@@ -69,19 +65,22 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         assert_equal(len(node1.getrawmempool()), 6)
         assert_equal(len(node2.getrawmempool()), 3)
 
+        # reconnect the nodes
+        self.log.info("reconnect the nodes")
+        connect_nodes(node1, 1)
+        # time.sleep(0.3)
+        # this sleep is to ensure the other node has gone through thread once
+        start_time = int(time.time())
         delta_time = 11 * 60 # seconds
         node1.setmocktime(start_time + delta_time)
         node2.setmocktime(start_time + delta_time)
-
-        # reconnect the nodes
-        connect_nodes(node1, 1)
-
-        time.sleep(11)
+        # time.sleep(0.3)
+        # this sleep is to ensure the node had time for getdata & receiving txn
 
         # check that node2 has gotten the txns since
         # they were rebroadcast
         assert_equal(len(node1.getrawmempool()), 6)
-        assert_equal(len(node2.getrawmempool()), 6)
+        wait_until(lambda: len(node2.getrawmempool()) == 6)
 
 if __name__ == '__main__':
     MempoolRebroadcastTest().main()
