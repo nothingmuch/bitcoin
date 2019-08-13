@@ -110,6 +110,8 @@ static constexpr unsigned int INVENTORY_BROADCAST_MAX = 7 * INVENTORY_BROADCAST_
 static constexpr unsigned int AVG_FEEFILTER_BROADCAST_INTERVAL = 10 * 60;
 /** Maximum feefilter broadcast delay after significant change. */
 static constexpr unsigned int MAX_FEEFILTER_CHANGE_DELAY = 5 * 60;
+/** Average delay between rebroadcasts in seconds. */
+static const unsigned int TX_REBROADCAST_INTERVAL = 60 * 60;
 
 // Internal stuff
 namespace {

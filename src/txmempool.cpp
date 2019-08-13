@@ -16,6 +16,8 @@
 #include <util/system.h>
 #include <util/moneystr.h>
 #include <util/time.h>
+#include <miner.h>
+#include <chainparams.h>
 
 CTxMemPoolEntry::CTxMemPoolEntry(const CTransactionRef& _tx, const CAmount& _nFee,
                                  int64_t _nTime, unsigned int _entryHeight,
