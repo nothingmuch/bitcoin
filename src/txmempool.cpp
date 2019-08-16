@@ -5,17 +5,19 @@
 
 #include <txmempool.h>
 
+#include <chainparams.h>
 #include <consensus/consensus.h>
 #include <consensus/tx_verify.h>
 #include <consensus/validation.h>
-#include <validation.h>
-#include <policy/policy.h>
+#include <miner.h>
 #include <policy/fees.h>
+#include <policy/policy.h>
 #include <policy/settings.h>
 #include <reverse_iterator.h>
-#include <util/system.h>
 #include <util/moneystr.h>
+#include <util/system.h>
 #include <util/time.h>
+#include <validation.h>
 
 CTxMemPoolEntry::CTxMemPoolEntry(const CTransactionRef& _tx, const CAmount& _nFee,
                                  int64_t _nTime, unsigned int _entryHeight,
@@ -95,6 +97,28 @@ void CTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendan
         }
     }
     mapTx.modify(updateIt, update_descendant_state(modifySize, modifyFee, modifyCount));
+}
+
+void CTxMemPool::GetRebroadcastTransactions(std::set<uint256>& setRebroadcastTxs)
+{
+    // Don't rebroadcast txns during importing, reindex, or IBD to ensure we don't
+    // accidentally spam our peers with old transactions.
+    if (::ChainstateActive().IsInitialBlockDownload() || ::fImporting || ::fReindex) return;
+
+    BlockAssembler::Options options;
+    options.nBlockMaxWeight = MAX_REBROADCAST_WEIGHT;
+    CScript scriptDummy = CScript() << OP_TRUE;
+
+    // use CreateNewBlock to get set of transaction candidates
+    std::unique_ptr<CBlockTemplate> pblocktemplate = BlockAssembler(Params(), options).CreateNewBlock(scriptDummy);
+
+    LOCK(cs);
+    for (const auto& tx : pblocktemplate->block.vtx) {
+        if (mapTx.find(tx->GetHash()) == mapTx.end()) continue;
+
+        // add to rebroadcast set
+        setRebroadcastTxs.insert(tx->GetHash());
+    }
 }
 
 // vHashesToUpdate is the set of transaction hashes from a disconnected block
