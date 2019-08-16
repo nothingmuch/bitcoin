@@ -60,6 +60,7 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         self.test_simple_rebroadcast()
         self.test_correct_invs()
         self.test_rebroadcast_top_txns()
+        self.test_recency_filter()
 
     # helper method that uses getblocktemplate with node arg
     # set to MAX_REBROADCAST_WEIGHT to find txns expected to
@@ -214,6 +215,50 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
 
         # confirm that the correct txns were rebroadcast
         self.compare_txns_to_invs(self.find_top_txns(node), conn2.get_invs())
+
+    def test_recency_filter(self):
+        self.log.info("Test recent txns don't get rebroadcast")
+
+        node = self.nodes[0]
+        node.setmocktime(0)
+
+        # mine blocks to clear out the mempool
+        node.generate(10)
+        assert_equal(len(node.getrawmempool()), 0)
+
+        # add p2p connection
+        conn = node.add_p2p_connection(P2PStoreTxInvs())
+
+        # create old txn
+        old_txn = node.sendtoaddress(node.getnewaddress(), 2)
+        assert_equal(len(node.getrawmempool()), 1)
+        wait_until(lambda: conn.get_invs(), timeout=30)
+
+        # bump mocktime to ensure the txn is old
+        mocktime = int(time.time()) + 31 * 60 # seconds
+        node.setmocktime(mocktime)
+
+        delta_time = 28 * 60 # seconds
+        while True:
+            # create a recent transaction
+            new_tx = node.sendtoaddress(node.getnewaddress(), 2)
+            new_tx_id = int(new_tx, 16)
+
+            # add another p2p connection since txns aren't rebroadcast
+            # to the same peer (see filterInventoryKnown)
+            new_conn = node.add_p2p_connection(P2PStoreTxInvs())
+
+            # bump mocktime to try to get rebroadcast,
+            # but not so much that the txn would be old
+            mocktime += delta_time
+            node.setmocktime(mocktime)
+
+            time.sleep(1.1)
+
+            # once we get any rebroadcasts, ensure the most recent txn is not included
+            if new_conn.get_invs():
+                assert(new_tx_id not in new_conn.get_invs())
+                break
 
 if __name__ == '__main__':
     MempoolRebroadcastTest().main()

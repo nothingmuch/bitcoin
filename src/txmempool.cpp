@@ -107,6 +107,7 @@ void CTxMemPool::GetRebroadcastTransactions(std::set<uint256>& setRebroadcastTxs
 
     BlockAssembler::Options options;
     options.nBlockMaxWeight = MAX_REBROADCAST_WEIGHT;
+    options.nMinTxAge = REBROADCAST_MIN_TX_AGE;
     CScript scriptDummy = CScript() << OP_TRUE;
 
     // use CreateNewBlock to get set of transaction candidates

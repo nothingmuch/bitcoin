@@ -135,6 +135,7 @@ private:
     bool fIncludeWitness;
     unsigned int nBlockMaxWeight;
     CFeeRate blockMinFeeRate;
+    int64_t nMinTxAge;
 
     // Information on the current status of the block
     uint64_t nBlockWeight;
@@ -153,6 +154,7 @@ public:
         Options();
         size_t nBlockMaxWeight;
         CFeeRate blockMinFeeRate;
+        int64_t nMinTxAge;
     };
 
     explicit BlockAssembler(const CChainParams& params);

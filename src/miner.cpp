@@ -45,6 +45,7 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
 BlockAssembler::Options::Options() {
     blockMinFeeRate = CFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
     nBlockMaxWeight = DEFAULT_BLOCK_MAX_WEIGHT;
+    nMinTxAge = 0;
 }
 
 BlockAssembler::BlockAssembler(const CChainParams& params, const Options& options) : chainparams(params)
@@ -52,6 +53,7 @@ BlockAssembler::BlockAssembler(const CChainParams& params, const Options& option
     blockMinFeeRate = options.blockMinFeeRate;
     // Limit weight to between 4K and MAX_BLOCK_WEIGHT-4K for sanity:
     nBlockMaxWeight = std::max<size_t>(4000, std::min<size_t>(MAX_BLOCK_WEIGHT - 4000, options.nBlockMaxWeight));
+    nMinTxAge = options.nMinTxAge;
 }
 
 static BlockAssembler::Options DefaultOptions()
@@ -66,6 +68,8 @@ static BlockAssembler::Options DefaultOptions()
     } else {
         options.blockMinFeeRate = CFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
     }
+    options.nMinTxAge = 0;
+
     return options;
 }
 
@@ -271,6 +275,7 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
 bool BlockAssembler::SkipMapTxEntry(CTxMemPool::txiter it, indexed_modified_transaction_set &mapModifiedTx, CTxMemPool::setEntries &failedTx)
 {
     assert (it != mempool.mapTx.end());
+    if (it->GetTime() > GetTime() - nMinTxAge) return true; // txn too recent
     return mapModifiedTx.count(it) || inBlock.count(it) || failedTx.count(it);
 }
 
