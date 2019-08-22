@@ -1536,6 +1536,12 @@ void static ProcessGetData(CNode* pfrom, const CChainParams& chainparams, CConnm
             if (mi != mapRelay.end()) {
                 connman->PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::TX, *mi->second));
                 push = true;
+
+                auto num = mempool.setUnbroadcastTxIDs.erase(inv.hash);
+                if (num) {
+                    LogPrint(BCLog::NET, "Removed %i from setUnbroadcastTxIDs \n", inv.hash.GetHex());
+                }
+
             } else if (pfrom->timeLastMempoolReq) {
                 auto txinfo = mempool.info(inv.hash);
                 // To protect privacy, do not answer getdata using the mempool when
@@ -3823,8 +3829,13 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                     }
 
                     pto->setInventoryTxToSend.insert(setRebroadcastTxs.begin(), setRebroadcastTxs.end());
+
+                    // also ensure inclusion of wallet txns that haven't been succesfully broadcast yet
+                    // since set elements are unique, this will be a no-op if the txns are already in setInventoryTxToSend
+                    pto->setInventoryTxToSend.insert(mempool.setUnbroadcastTxIDs.begin(), mempool.setUnbroadcastTxIDs.end());
                 }
             }
+
 
             // Time to send but the peer has requested we not relay transactions.
             if (fSendTrickle) {

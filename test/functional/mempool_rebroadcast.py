@@ -150,12 +150,11 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         # add another p2p connection since txns aren't rebroadcast to the same peer (see filterInventoryKnown)
         conn2 = node.add_p2p_connection(P2PStoreTxInvs())
 
-        # bump mocktime of node1 so rebroadcast is triggered the nodes
+        # bump mocktime of node1 so rebroadcast is triggered
         mocktime += 300 * 60 # hit rebroadcast interval
         node.setmocktime(mocktime)
 
         # `nNextInvSend` delay on `setInventoryTxToSend
-
         wait_until(lambda: conn2.get_invs(), timeout=30)
 
         # verify correct invs were sent
@@ -198,6 +197,8 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         # confirm txns are more than max rebroadcast amount
         assert_greater_than(node.getmempoolinfo()['bytes'], MAX_REBROADCAST_WEIGHT)
 
+        self.sync_all()
+
         # age txns to ensure they won't be excluded due to recency filter
         mocktime = int(time.time()) + 31 * 60
         node.setmocktime(mocktime)
@@ -208,7 +209,7 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         # trigger rebroadcast to occur
         mocktime += 300 * 60 # seconds
         node.setmocktime(mocktime)
-        time.sleep(0.5) # ensure send message thread runs so invs get sent
+        time.sleep(1) # ensure send message thread runs so invs get sent
 
         inv_count = len(conn2.get_invs())
         assert_greater_than(inv_count, 0)
@@ -220,6 +221,8 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         self.log.info("Test recent txns don't get rebroadcast")
 
         node = self.nodes[0]
+        node2 = self.nodes[1]
+
         node.setmocktime(0)
 
         # mine blocks to clear out the mempool
@@ -241,8 +244,11 @@ class MempoolRebroadcastTest(BitcoinTestFramework):
         delta_time = 28 * 60 # seconds
         while True:
             # create a recent transaction
-            new_tx = node.sendtoaddress(node.getnewaddress(), 2)
+            new_tx = node2.sendtoaddress(node2.getnewaddress(), 2)
             new_tx_id = int(new_tx, 16)
+
+            # ensure node1 has the transaction
+            wait_until(lambda: new_tx in node.getrawmempool())
 
             # add another p2p connection since txns aren't rebroadcast
             # to the same peer (see filterInventoryKnown)

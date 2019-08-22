@@ -55,6 +55,9 @@ TransactionError BroadcastTransaction(const CTransactionRef tx, std::string& err
 
         // Transaction was accepted to the mempool.
 
+        // the mempool explicitly keeps track of wallet txns to ensure succesful initial broadcast
+        mempool.setUnbroadcastTxIDs.insert(hashTx);
+
         if (wait_callback) {
             // For transactions broadcast from outside the wallet, make sure
             // that the wallet has been notified of the transaction before
