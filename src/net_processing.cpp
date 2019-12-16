@@ -3775,7 +3775,7 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                     // If the peer's chain has this block, don't inv it back.
                     if (!PeerHasHeader(&state, pindex)) {
                         pto->PushInventory(CInv(MSG_BLOCK, hashToAnnounce));
-                        LogPrint(BCLog::NET, "%s: sending inv peer=%d hash=%s\n", __func__,
+                        LogPrint(BCLog::NET, "ABCD %s: sending inv peer=%d hash=%s\n", __func__,
                             pto->GetId(), hashToAnnounce.ToString());
                     }
                 }
@@ -3820,40 +3820,60 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
 
                 // Check for rebroadcasts
                 if (pto->m_next_rebroadcast < current_time) {
-                    LogPrint(BCLog::NET, "Rebroadcast timer triggered\n");
+                    LogPrint(BCLog::NET, "ABCD initial rebroadcast timer triggered, peer=%d\n", pto->GetId());
+                    const auto start_time = GetTime<std::chrono::microseconds>();
                     // schedule next rebroadcast
                     bool fFirst = (pto->m_next_rebroadcast.count() == 0);
                     pto->m_next_rebroadcast = PoissonNextSend(current_time, TX_REBROADCAST_INTERVAL);
 
+                    if (fFirst) {
+                        LogPrint(BCLog::NET, "ABCD skipping rebroadcast run bc first time, peer=%d\n", pto->GetId());
+                    }
+
                     // if there hasn't been a block since last cache, don't rebroadcast yet
                     bool fSkipRun = ::ChainActive().Tip() == mempool.m_tip_at_cache_time && false;
                     if (fSkipRun) {
-                        LogPrint(BCLog::NET, "Bumping rebroadcast because no new blocks since last cache run\n");
+                        LogPrint(BCLog::NET, "ABCD bumping rebroadcast time because no new blocks since last cache run, peer=%d\n", pto->GetId());
                         mempool.m_next_min_fee_cache += REBROADCAST_FEE_RATE_CACHE_INTERVAL;
                         pto->m_next_rebroadcast = current_time + std::chrono::minutes{10};
                     }
 
                     if (!fFirst && !fSkipRun) {
+                        LogPrint(BCLog::NET, "ABCD time to actually rebroadcast \n");
                         std::vector<uint256> rebroadcastTxs;
-                        mempool.GetRebroadcastTransactions(rebroadcastTxs);
+                        int num_candidates = 0;
+                        mempool.GetRebroadcastTransactions(rebroadcastTxs, num_candidates);
 
-                        for (const uint256& hash : rebroadcastTxs) {
-                            LogPrint(BCLog::NET, "Rebroadcast tx=%s peer=%d\n", hash.GetHex(), pto->GetId());
-                        }
+                        int diff_time = (start_time - mempool.m_last_cache_run_time).count();
+                        LogPrint(BCLog::NET, "ABCD %lu transactions queued for rebroadcast to peer=%d, from %s candidates filtered with cached fee rate of %s. Cache ran %i microseconds ago. \n", rebroadcastTxs.size(), pto->GetId(), num_candidates, mempool.m_cached_fee_rate.ToString(), diff_time);
+
+                        //for (const uint256& hash : rebroadcastTxs) {
+                            //LogPrint(BCLog::NET, "ABCD Rebroadcast tx=%s peer=%d\n", hash.GetHex(), pto->GetId());
+                        //}
 
                         // add rebroadcast txns
                         pto->m_tx_relay->setInventoryTxToSend.insert(rebroadcastTxs.begin(), rebroadcastTxs.end());
 
                         // also include wallet txns that haven't been successfully broadcast yet
-                        LogPrint(BCLog::NET, "Force initial broadcast of %lu transactions \n", mempool.m_unbroadcast_txids.size());
+                        LogPrint(BCLog::NET, "ABCD Force initial broadcast of %lu transactions to peer=%d\n", mempool.m_unbroadcast_txids.size(), pto->GetId());
+
+                        //for (const uint256& hash : mempool.m_unbroadcast_txids) {
+                            //LogPrint(BCLog::NET, "ABCD unbroadcast tx=%s peer=%d\n", hash.GetHex(), pto->GetId());
+                        //}
+
                         // since set elements are unique, this will be a no-op if the txns are already in setInventoryTxToSend
                         pto->m_tx_relay->setInventoryTxToSend.insert(mempool.m_unbroadcast_txids.begin(), mempool.m_unbroadcast_txids.end());
                     }
+
+                    const auto end_time = GetTime<std::chrono::microseconds>();
+                    const auto delta_time = (start_time - end_time).count();
+                    LogPrint(BCLog::NET, "ABCD total rebroadcast logic (without cache) took %i seconds\n", delta_time);
                 }
 
                 // cache the min fee rate for a txn to be included in a block
                 // applied as rebroadcast filter above
                 if (mempool.m_next_min_fee_cache < current_time){
+                    //LogPrint(BCLog::NET, "ABCD in net processing, time to cache the min fee rate\n");
                     mempool.CacheMinRebroadcastFee();
                 }
 

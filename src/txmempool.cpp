@@ -100,7 +100,7 @@ void CTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendan
     mapTx.modify(updateIt, update_descendant_state(modifySize, modifyFee, modifyCount));
 }
 
-void CTxMemPool::GetRebroadcastTransactions(std::vector<uint256>& rebroadcastTxs)
+void CTxMemPool::GetRebroadcastTransactions(std::vector<uint256>& rebroadcastTxs, int& num_candidates)
 {
     // Don't rebroadcast txns during importing, reindex, or IBD to ensure we don't
     // accidentally spam our peers with old transactions.
@@ -111,6 +111,7 @@ void CTxMemPool::GetRebroadcastTransactions(std::vector<uint256>& rebroadcastTxs
     options.m_skip_inclusion_until = std::chrono::seconds(GetTime()) - REBROADCAST_MIN_TX_AGE;
     CScript dummy_script = CScript();
 
+    LogPrint(BCLog::MEMPOOL, "ABCD Calling CNB from GetRebroadcastTransactions \n");
     // use CreateNewBlock to get set of transaction candidates
     std::unique_ptr<CBlockTemplate> pblocktemplate = BlockAssembler(Params(), options).CreateNewBlock(dummy_script);
 
@@ -126,11 +127,14 @@ void CTxMemPool::GetRebroadcastTransactions(std::vector<uint256>& rebroadcastTxs
         }
     }
 
-    LogPrint(BCLog::MEMPOOL, "%d transactions queued for rebroadcast, from %s candidates filtered with cached fee rate of %s. \n", count, pblocktemplate->block.vtx.size(), m_cached_fee_rate.ToString());
+    num_candidates = pblocktemplate->block.vtx.size();
 }
 
 void CTxMemPool::CacheMinRebroadcastFee()
 {
+    const auto start_time= GetTime<std::chrono::microseconds>();
+    m_last_cache_run_time = start_time;
+
     // update time of next run
     mempool.m_next_min_fee_cache = REBROADCAST_FEE_RATE_CACHE_INTERVAL + GetTime<std::chrono::microseconds>();
 
@@ -140,7 +144,9 @@ void CTxMemPool::CacheMinRebroadcastFee()
     // update cache
     m_cached_fee_rate = BlockAssembler(Params()).minTxFeeRate();
 
-    LogPrint(BCLog::MEMPOOL, "Rebroadcast cached_fee_rate has been updated to=%s \n", m_cached_fee_rate.ToString());
+    const std::chrono::microseconds end_time= GetTime<std::chrono::microseconds>();
+    const int diff_time = (end_time - start_time).count();
+    LogPrint(BCLog::MEMPOOL, "ABCD updating cache value took %d microseconds to run \n", diff_time);
 }
 
 // vHashesToUpdate is the set of transaction hashes from a disconnected block

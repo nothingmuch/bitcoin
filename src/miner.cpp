@@ -329,6 +329,7 @@ CFeeRate BlockAssembler::minTxFeeRate()
         addPackageTxs(nPackagesSelected, nDescendantsUpdated, min_fee_rate);
     }
 
+    LogPrint(BCLog::MEMPOOL, "ABCD updating rebroadcast cached_fee_rate to=%s. num txns in block is: %d \n", min_fee_rate.ToString(), pblocktemplate->block.vtx.size());
     return min_fee_rate;
 }
 

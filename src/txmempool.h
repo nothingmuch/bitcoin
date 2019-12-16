@@ -549,6 +549,9 @@ public:
     CBlockIndex* m_tip_at_cache_time;                  //!< block height at time of cache
     CFeeRate m_cached_fee_rate;                        //!< min package fee rate for block inclusion
 
+    // temporary rebroadcast monitoring
+    std::chrono::microseconds m_last_cache_run_time;
+
 private:
     typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
 
@@ -637,7 +640,7 @@ public:
      * of rebroadcast candidates, filter them by comparing their fee rates with
      * the cached fee rate & populate rebroadcastTxs with remaining.
      */
-    void GetRebroadcastTransactions(std::vector<uint256>& rebroadcastTxs);
+    void GetRebroadcastTransactions(std::vector<uint256>& rebroadcastTxs, int& num_candidates);
 
     /** Assemble a block from the local mempool and update a cache with the
      *  minimum fee rate for a package to be included.
