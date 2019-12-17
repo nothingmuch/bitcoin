@@ -29,6 +29,7 @@
 #include <util/validation.h>
 
 #include <memory>
+#include <algorithm>
 
 #if defined(NDEBUG)
 # error "Bitcoin cannot be compiled without assertions."
@@ -3787,6 +3788,11 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
         // Message: inventory
         //
         std::vector<CInv> vInv;
+        int diff_time;
+        int original_rebroadcast_size;
+        std::vector<uint256> rebroadcastTxs;
+        int num_candidates = 0;
+
         {
             LOCK(pto->cs_inventory);
             vInv.reserve(std::max<size_t>(pto->vInventoryBlockToSend.size(), INVENTORY_BROADCAST_MAX));
@@ -3840,12 +3846,11 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
 
                     if (!fFirst && !fSkipRun) {
                         LogPrint(BCLog::NET, "ABCD time to actually rebroadcast \n");
-                        std::vector<uint256> rebroadcastTxs;
-                        int num_candidates = 0;
                         mempool.GetRebroadcastTransactions(rebroadcastTxs, num_candidates);
 
-                        int diff_time = (start_time - mempool.m_last_cache_run_time).count();
-                        LogPrint(BCLog::NET, "ABCD %lu transactions queued for rebroadcast to peer=%d, from %s candidates filtered with cached fee rate of %s. Cache ran %i microseconds ago. \n", rebroadcastTxs.size(), pto->GetId(), num_candidates, mempool.m_cached_fee_rate.ToString(), diff_time);
+                        diff_time = (start_time - mempool.m_last_cache_run_time).count();
+                        original_rebroadcast_size = rebroadcastTxs.size();
+                        //LogPrint(BCLog::NET, "ABCD %lu transactions queued for rebroadcast to peer=%d, from %s candidates filtered with cached fee rate of %s. Cache ran %i microseconds ago. \n", original_rebroadcast_size, pto->GetId(), num_candidates, mempool.m_cached_fee_rate.ToString(), diff_time);
 
                         //for (const uint256& hash : rebroadcastTxs) {
                             //LogPrint(BCLog::NET, "ABCD Rebroadcast tx=%s peer=%d\n", hash.GetHex(), pto->GetId());
@@ -3980,12 +3985,17 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                             vInv.clear();
                         }
                         pto->m_tx_relay->filterInventoryKnown.insert(hash);
+                        rebroadcastTxs.erase(std::remove(rebroadcastTxs.begin(), rebroadcastTxs.end(), hash), rebroadcastTxs.end());
                     }
                 }
             }
         }
         if (!vInv.empty())
             connman->PushMessage(pto, msgMaker.Make(NetMsgType::INV, vInv));
+
+        int new_rebroadcast_size = rebroadcastTxs.size();
+        LogPrint(BCLog::NET, "ABCD actually rebroadcasting %lu txns to peer=%d. %s candidates -> filtered through cached fee rate %s (%i seconds ago)-> %lu added to setInventoryTxToSend \n", new_rebroadcast_size, pto->GetId(), num_candidates, mempool.m_cached_fee_rate.ToString(), diff_time, original_rebroadcast_size);
+        //LogPrint(BCLog::NET, "ABCD %lu transactions queued for rebroadcast to peer=%d, from %s original candidates filtered with cached fee rate of %s. Cache ran %i microseconds ago. \n", original_rebroadcast_size, pto->GetId(), num_candidates, mempool.m_cached_fee_rate.ToString(), diff_time);
 
         // Detect whether we're stalling
         current_time = GetTime<std::chrono::microseconds>();
