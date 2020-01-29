@@ -66,9 +66,9 @@ class ResendWalletTransactionsTest(BitcoinTestFramework):
         node.p2ps[1].sync_with_ping()
         assert_equal(node.p2ps[1].tx_invs_received[txid], 0)
 
-        self.log.info("Transaction should be rebroadcast after 30 minutes")
-        # Use mocktime and give an extra 5 minutes to be sure.
-        rebroadcast_time = int(time.time()) + 41 * 60
+        self.log.info("Transaction should be rebroadcast after 24 hours")
+        # Use mocktime and give an extra hour to be sure.
+        rebroadcast_time = int(time.time()) + 25 * 60 * 60
         node.setmocktime(rebroadcast_time)
         wait_until(lambda: node.p2ps[1].tx_invs_received[txid] >= 1, lock=mininode_lock)
 
