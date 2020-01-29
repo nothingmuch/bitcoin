@@ -377,6 +377,7 @@ private:
     NodeId GetNewNodeId();
 
     size_t SocketSendData(CNode *pnode) const;
+    void AttemptInitialBroadcast();
     void DumpAddresses();
 
     // Network stats
@@ -514,6 +515,7 @@ public:
     virtual bool SendMessages(CNode* pnode) = 0;
     virtual void InitializeNode(CNode* pnode) = 0;
     virtual void FinalizeNode(NodeId id, bool& update_connection_time) = 0;
+    virtual void QueueUnbroadcastTxs(CNode* pnode) = 0;
 
 protected:
     /**

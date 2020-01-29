@@ -780,6 +780,14 @@ void PeerLogicValidation::InitializeNode(CNode *pnode) {
         PushNodeVersion(pnode, connman, GetTime());
 }
 
+void PeerLogicValidation::QueueUnbroadcastTxs(CNode* pnode)
+{
+    for(const uint256& txid : mempool.m_unbroadcast_txids){
+        CInv inv(MSG_TX, txid);
+        pnode->PushInventory(inv);
+    }
+}
+
 void PeerLogicValidation::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
     fUpdateConnectionTime = false;
     LOCK(cs_main);
