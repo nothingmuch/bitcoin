@@ -79,6 +79,10 @@ TransactionError BroadcastTransaction(NodeContext& node, const CTransactionRef t
     }
 
     if (relay) {
+        // the mempool tracks locally submitted transactions to make a
+        // best-effort of initial broadcast
+        mempool.m_unbroadcast_txids.insert(hashTx);
+
         RelayTransaction(hashTx, *node.connman);
     }
 

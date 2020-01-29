@@ -1590,6 +1590,11 @@ void static ProcessGetData(CNode* pfrom, const CChainParams& chainparams, CConnm
             if (mi != mapRelay.end()) {
                 connman->PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::TX, *mi->second));
                 push = true;
+                // Once a peer requests GETDATA for a txn, we deem initial broadcast a success
+                int num = mempool.m_unbroadcast_txids.erase(inv.hash);
+                if (num) {
+                    LogPrint(BCLog::NET, "Removed %i from m_unbroadcast_txids \n", inv.hash.GetHex());
+                }
             } else {
                 auto txinfo = mempool.info(inv.hash);
                 // To protect privacy, do not answer getdata using the mempool when

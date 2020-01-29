@@ -416,6 +416,10 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
     for (const CTxIn& txin : it->GetTx().vin)
         mapNextTx.erase(txin.prevout);
 
+    if (mempool.m_unbroadcast_txids.erase(hash)) {
+        LogPrint(BCLog::NET, "Removed %i from m_unbroadcast_txids before GETDATA was received. \n", hash.GetHex());
+    }
+
     if (vTxHashes.size() > 1) {
         vTxHashes[it->vTxHashesIdx] = std::move(vTxHashes.back());
         vTxHashes[it->vTxHashesIdx].second->vTxHashesIdx = it->vTxHashesIdx;
