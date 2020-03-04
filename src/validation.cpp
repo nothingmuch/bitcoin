@@ -5045,12 +5045,26 @@ bool LoadMempool(CTxMemPool& pool)
         for (const auto& i : mapDeltas) {
             pool.PrioritiseTransaction(i.first, i.second);
         }
+
+        LogPrintf("ABCD checkpoint\n");
+        uint64_t extra_val;
+
+        if(!file.eof())
+        {
+            file >> extra_val;
+            LogPrintf("ABCD extra_val: %lu \n", extra_val);
+
+            //file >> pool.m_unbroadcast_txids;
+        } else {
+            LogPrintf("ABCD end of file \n");
+        }
+
     } catch (const std::exception& e) {
-        LogPrintf("Failed to deserialize mempool data on disk: %s. Continuing anyway.\n", e.what());
+        LogPrintf("ABCD Failed to deserialize mempool data on disk: %s. Continuing anyway.\n", e.what());
         return false;
     }
 
-    LogPrintf("Imported mempool transactions from disk: %i succeeded, %i failed, %i expired, %i already there\n", count, failed, expired, already_there);
+    LogPrintf("ABCD Imported mempool transactions from disk: %i succeeded, %i failed, %i expired, %i already there\n", count, failed, expired, already_there);
     return true;
 }
 
@@ -5093,7 +5107,13 @@ bool DumpMempool(const CTxMemPool& pool)
             mapDeltas.erase(i.tx->GetHash());
         }
 
+        // since I'm dumping the contents of the mempool directly, I might not
+        // need to manually add the size & it will be handled directly.
+
         file << mapDeltas;
+
+        //file << version;
+
         if (!FileCommit(file.Get()))
             throw std::runtime_error("FileCommit failed");
         file.fclose();

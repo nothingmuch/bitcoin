@@ -651,6 +651,10 @@ public:
     int GetType() const          { return nType; }
     int GetVersion() const       { return nVersion; }
 
+    bool eof() const {
+        return feof(file);
+    }
+
     void read(char* pch, size_t nSize)
     {
         if (!file)
