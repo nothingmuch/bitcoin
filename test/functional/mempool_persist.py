@@ -139,8 +139,5 @@ class MempoolPersistTest(BitcoinTestFramework):
         assert_raises_rpc_error(-1, "Unable to dump mempool to disk", self.nodes[1].savemempool)
         os.rmdir(mempooldotnew1)
 
-        assert(False)
-
-
 if __name__ == '__main__':
     MempoolPersistTest().main()

@@ -5047,18 +5047,17 @@ bool LoadMempool(CTxMemPool& pool)
         }
 
         LogPrintf("ABCD checkpoint\n");
-        uint64_t extra_val;
 
-        if(!file.eof())
-        {
-            file >> extra_val;
-            LogPrintf("ABCD extra_val: %lu \n", extra_val);
-
-            //file >> pool.m_unbroadcast_txids;
-        } else {
-            LogPrintf("ABCD end of file \n");
+        bool has_unbroadcast_txids = false;
+        try {
+            file >> has_unbroadcast_txids;
+        } catch (const std::exception &e) {
+            if (!file.eof()) // alternatively, stringly typed check on e.what(), but that's gross
+              throw e;
         }
 
+        if (has_unbroadcast_txids)
+            file >> pool.m_unbroadcast_txids;
     } catch (const std::exception& e) {
         LogPrintf("ABCD Failed to deserialize mempool data on disk: %s. Continuing anyway.\n", e.what());
         return false;
@@ -5112,7 +5111,10 @@ bool DumpMempool(const CTxMemPool& pool)
 
         file << mapDeltas;
 
-        //file << version;
+        if (pool.m_unbroadcast_txids.size() > 0) {
+            file << true;
+            file << pool.m_unbroadcast_txids;
+        }
 
         if (!FileCommit(file.Get()))
             throw std::runtime_error("FileCommit failed");
